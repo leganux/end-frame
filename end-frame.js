@@ -35,7 +35,7 @@ let endFrame = function (mongoDBUri, port = 3011, options = {
 }, ssl_config = {}) {
 
     console.log(`
-    v1.0.2
+    v1.0.1
     Welcome to End-Frame
         
    __          _         ___                         
