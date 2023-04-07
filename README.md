@@ -18,10 +18,10 @@ Thanks to EndFrame you can create a REST API to manage Mail
 
 <hr>
 
-**Import tres comas basic project**
+**Import endframe-functions basic project**
 
 ```javascript
-const endFrame = require("end-frame");
+const endFrame = require("endframe-functions");
 ```
 
 **Set up the library**
@@ -58,7 +58,7 @@ cf.start()
 **Full example code**
 
 ```javascript
-let endFrame = require('./index')
+let endFrame = require('endframe-functions')
 
 
 let options = {

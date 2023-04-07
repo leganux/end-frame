@@ -1,6 +1,6 @@
 {
-  "name": "end-frame",
-  "version": "1.0.0",
+  "name": "endframe-functions",
+  "version": "1.0.1",
   "description": "Cloud functions API REST made easy ",
   "main": "index.js",
   "scripts": {
