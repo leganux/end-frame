@@ -31,11 +31,13 @@ let endFrame = function (mongoDBUri, port = 3011, options = {
     collection_log: "executions",
     collection_cron: "cron",
     timezone: "America/Mexico_City",
-    mailTransporter: false
+    mailTransporter: false,
+    app: false,
+    mongoose: false
 }, ssl_config = {}) {
 
     console.log(`
-    v1.0.1
+    v1.0.2
     Welcome to End-Frame
         
    __          _         ___                         
@@ -53,29 +55,58 @@ let endFrame = function (mongoDBUri, port = 3011, options = {
 `)
 
     try {
-        this.mongoose = require("mongoose");
+        this.instancedMongoose = false
+        this.mongoose = {}
+        if (!options.mongoose) {
+            this.mongoose = require("mongoose");
+
+        } else {
+            this.mongoose = options.mongoose
+            this.instancedMongoose = true
+        }
+
+
         if (!mongoDBUri) {
             throw new Error('You must to add the mongo db URI')
         }
 
 
-        this.app = express()
-        this.app.use(bodyParser.urlencoded({extended: true}));
-        this.app.use(bodyParser.json());
+        this.app = {}
+        this.instancedApp = false
 
+        if (options.app) {
+            this.app = options.app
+            this.instancedApp = true
+        } else {
+            this.app = express()
+            this.app.use(bodyParser.urlencoded({extended: true}));
+            this.app.use(bodyParser.json());
+            this.instancedApp = false
+        }
 
         this.activeLogRequest = false
-        if (ssl_config && ssl_config.private && ssl_config.cert && ssl_config.port) {
+        if (ssl_config && ssl_config.private && ssl_config.cert && ssl_config.port&& !this.instancedApp) {
             this.privateKey = fs.readFileSync(ssl_config.private, 'utf8');
             this.certificate = fs.readFileSync(ssl_config.cert, 'utf8');
             this.credentials = {key: this.privateKey, cert: this.certificate};
             this.httpsServer = https.createServer(this.credentials, this.app);
         }
 
-        this.httpServer = http.createServer(this.app);
-        this.mongoose.connect(mongoDBUri, {useUnifiedTopology: true, useNewUrlParser: true,});
-        this.mongoose.set('strictQuery', true);
+        if (!this.instancedApp) {
+            this.httpServer = http.createServer(this.app);
+        }
+
+
+
+        if (!this.instancedMongoose) {
+            this.mongoose.connect(mongoDBUri, {useUnifiedTopology: true, useNewUrlParser: true,});
+            this.mongoose.set('strictQuery', true);
+        }
+
+
         this.db = this.mongoose.connection;
+
+
         this.api_base_uri = '/functions/';
         this.secure = false
 
@@ -816,12 +847,32 @@ module.exports=cronlist;
             el.app.get(el.api_base_uri + 'STATS', async function (_req, res) {
                 try {
                     let obj_counts = []
+                    for (let [key, value] of Object.entries(el.models_object)) {
+                        obj_counts.push({
+                            name: key,
+                            count: await value.count()
+                        })
+                    }
+
+                    let drive_info,
+                        drive_free,
+                        drive_used = {}
+                    try {
+                        drive_info = await drive.info()
+                        drive_free = await drive.free()
+                        drive_used = await drive.used()
+
+                    } catch
+                        (e) {
+                        console.info('disco no localizado')
+                    }
+
 
                     res.status(200).json({
                         success: true,
                         code: 200,
                         error: '',
-                        message: 'APIed-Piper server statistics',
+                        message: 'Server statistics',
                         data: {
                             model_counts: obj_counts,
                             cpu_usage: await cpu.usage(),
@@ -829,12 +880,11 @@ module.exports=cronlist;
                             cpu_free: await cpu.free(),
                             cpu_count: await cpu.count(),
                             osCmd_whoami: await osCmd.whoami(),
-                            drive_info: await drive.info(),
-                            drive_free: await drive.free(),
-                            drive_used: await drive.used(),
+
                             mem_used: await mem.used(),
                             mem_free: await mem.free(),
 
+                            drive_free, drive_used, drive_info,
                             netstat_inout: await netstat.inOut(),
                             os_info: await os.oos(),
                             os_uptime: await os.uptime(),
@@ -855,6 +905,22 @@ module.exports=cronlist;
                     })
                 }
             })
+        }
+        this.getExpressInstanceApp = function () {
+            return this.app
+        }
+        this.getMongooseInstanceApp = function () {
+            return {
+                mongooseInstance: this.mongoose,
+                schema: {
+                    FUNCTION: this.MSchema,
+                    CRON: this.MCronSchema
+                },
+                model: {
+                    FUNCTION: this.functionsModel,
+                    CRON: this.cronModel
+                }
+            }
         }
         this.start = async function () {
 
